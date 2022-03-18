@@ -1,0 +1,40 @@
+dictionary:
+  illegal_username: "Username is already in use"
+  illegal_email: "Account already exists"
+  account_created: "Account was created"
+  missing_fields: "Field missing:"
+
+  reserved_usernames:
+    - admin
+    - root
+    - guest
+    - user
+
+  # Error messages.
+  error:
+
+    missing_fields: "Fields are missing"
+
+    # Error messages for the login page.
+    login:
+      missing_fields: "Missing required fields"
+      invalid_credentials: "Wrong email or password"
+
+
+    # Error messages for register fields.
+    username:
+      too_long: "Username is too long"
+      too_short: "Username is too short"
+      illegal: "Username is illegal"
+      reserved: "Username is reserved"
+      occupied: "Username is already in use"
+
+    user:
+      not_found: "User was not found."
+
+  # Status messages.
+  status:
+    success: "Success"
+    failure: "Unsuccessful"
+    error: "Error"
+    internal: "Something went wrong"
