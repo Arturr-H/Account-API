@@ -63,139 +63,147 @@ module.exports = (() => {
 
     /*- api/create-account -*/
     app.get("/create-account", async (req, res) => {
-        const { email, username, displayname, password } = req.headers;
 
-        /*- Check if fields are missing -*/
-        if (!email || !username || !displayname || !password) {
+        try{
+            const { email, username, displayname, password } = req.headers;
 
-            /*- The missing field, sorted by most least to most important -*/
-            let missing;
-            if (!displayname) missing = "displayname";
-            if (!username) missing    = "username";
-            if (!password) missing    = "password";
-            if (!email) missing       = "email";
+            /*- Check if fields are missing -*/
+            if (!email || !username || !displayname || !password) {
 
-            return res.json({
-                message: `${dictionary.missing_fields} ${missing}`,
-                status: 400
-            });
-        };
+                /*- The missing field, sorted by most least to most important -*/
+                let missing;
+                if (!displayname) missing = "displayname";
+                if (!username) missing    = "username";
+                if (!password) missing    = "password";
+                if (!email) missing       = "email";
 
-        /*- Salt & hash the password for security. -*/
-        const salt = crypto.randomBytes(16).toString("hex");
-        const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-
-        /*- Check if username is already in use -*/
-        await checkUsername(username, (result) => {
-            if (result && !result.success) return res.json({
-                message: result.message,
-                status: 400
-            });
-            else if (result && result.success) {
-                /*- Try creating the account -*/
-                MongoClient.connect(uri, async (err, client) => {
-        
-                    /*- Get the database -*/
-                    const db = client.db(dbs);
-        
-                    /*- Check if the email already exists -*/
-                    const checkEmail = await db.collection("users").findOne({ email: email });
-        
-                    /*- If email exists -*/
-                    if (checkEmail) return res.json({
-                        message: dictionary.illegal_email,
-                        status: 400,
-                    });
-        
-                    /*- User-id -*/
-                    const uid = crypto.randomUUID();
-                    const suid = crypto.randomBytes(16).toString("hex");
-        
-                    /*- Small user info that might be used somewhere -*/
-                    const userInfo = {
-                        joined: new Date().toDateString(),
-                        role: roles.user,
-                    }
-        
-                    /*- Insert the new user -*/
-                    const insertUser = await db.collection("users").insertOne({
-                        uid,
-                        suid,
-                        salt,
-                        email,
-                        username,
-                        displayname,
-                        ...userInfo,
-                        password: hash, 
-                    });
-        
-                    /*- If user was inserted -*/
-                    if (insertUser.insertedCount === 1) {
-                        console.log("three")
-                        return res.json({
-                            status: 200,
-                            message: dictionary.account_created,
-                        });
-                    }
+                return res.json({
+                    message: `${dictionary.missing_fields} ${missing}`,
+                    status: 400
                 });
-            }
-            else{
-                console.log("two", username, result)
-            }
-        });
+            };
+
+            /*- Salt & hash the password for security. -*/
+            const salt = crypto.randomBytes(16).toString("hex");
+            const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+
+            /*- Check if username is already in use -*/
+            await checkUsername(username, (result) => {
+                if (result && !result.success) return res.json({
+                    message: result.message,
+                    status: 400
+                });
+                else if (result && result.success) {
+                    /*- Try creating the account -*/
+                    MongoClient.connect(uri, async (err, client) => {
+            
+                        /*- Get the database -*/
+                        const db = client.db(dbs);
+            
+                        /*- Check if the email already exists -*/
+                        const checkEmail = await db.collection("users").findOne({ email: email });
+            
+                        /*- If email exists -*/
+                        if (checkEmail) return res.json({
+                            message: dictionary.illegal_email,
+                            status: 400,
+                        });
+            
+                        /*- User-id -*/
+                        const uid = crypto.randomUUID();
+                        const suid = crypto.randomBytes(16).toString("hex");
+            
+                        /*- Small user info that might be used somewhere -*/
+                        const userInfo = {
+                            joined: new Date().toDateString(),
+                            role: roles.user,
+                        }
+            
+                        /*- Insert the new user -*/
+                        const insertUser = await db.collection("users").insertOne({
+                            uid,
+                            suid,
+                            salt,
+                            email,
+                            username,
+                            displayname,
+                            ...userInfo,
+                            password: hash, 
+                        });
+            
+                        /*- If user was inserted -*/
+                        if (insertUser.insertedCount === 1) {
+                            console.log("three")
+                            return res.json({
+                                status: 200,
+                                message: dictionary.account_created,
+                            });
+                        }
+                    });
+                }
+                else{
+                    console.log("two", username, result)
+                }
+            });
+        }catch{
+            res.sendStatus(404);
+        }
     });
 
     /*- api/login -*/
     app.get("/login", (req, res) => {
-        const { email, password } = req.headers;
+        try{
+            const { email, password } = req.headers;
 
-        /*- Check if fields are missing -*/
-        if (!email || !password) {
-            return res.json({
-                message: dictionary.error.login.missing_fields,
-                status: 400
-            });
-        };
-
-        /*- Try logging in -*/
-        MongoClient.connect(uri, (_, client) => {
-
-            const db = client.db(dbs);
-            db.collection("users").findOne({ email }, (_, user) => {
-
-                if (!user) {
-                    return res.json({
-                        message: dictionary.error.login.invalid_credentials,
-                        status: 400
-                    });
-                }
-
-                /*- Hash the password for security. -*/
-                const hash = crypto.pbkdf2Sync(password, user.salt, 1000, 64, "sha512").toString("hex");
-
-                /*- Check if passwords match -*/
-                if (user.password !== hash) {
-                    return res.json({
-                        message: dictionary.error.login.invalid_credentials,
-                        status: 400
-                    });
-                }
-
-                /*- Respond with user-data -*/
+            /*- Check if fields are missing -*/
+            if (!email || !password) {
                 return res.json({
-                    message: dictionary.status.success,
-                    status: 200,
-                    data: {
-                        uid: user.uid
+                    message: dictionary.error.login.missing_fields,
+                    status: 400
+                });
+            };
+
+            /*- Try logging in -*/
+            MongoClient.connect(uri, (_, client) => {
+
+                const db = client.db(dbs);
+                db.collection("users").findOne({ email }, (_, user) => {
+
+                    if (!user) {
+                        return res.json({
+                            message: dictionary.error.login.invalid_credentials,
+                            status: 400
+                        });
                     }
+
+                    /*- Hash the password for security. -*/
+                    const hash = crypto.pbkdf2Sync(password, user.salt, 1000, 64, "sha512").toString("hex");
+
+                    /*- Check if passwords match -*/
+                    if (user.password !== hash) {
+                        return res.json({
+                            message: dictionary.error.login.invalid_credentials,
+                            status: 400
+                        });
+                    }
+
+                    /*- Respond with user-data -*/
+                    return res.json({
+                        message: dictionary.status.success,
+                        status: 200,
+                        data: {
+                            uid: user.uid
+                        }
+                    });
                 });
             });
-        });
+        }catch{
+            res.sendStatus(404);
+        }
     });
 
     /*- api/profile-upload -*/
     app.post("/profile-upload", upload.single("profile-file"), async (req, res) => {
-    
         try{
             /*-
                 Get the secure-user-id, all profile
@@ -254,34 +262,38 @@ module.exports = (() => {
         }
 
         /*- Search for the account using the SUID -*/
-        MongoClient.connect(uri, async (_, client) => {
-            try{
-                const db = client.db(dbs);
-                
-                /*- Find user -*/
-                const userData = await db.collection("users").findOne({ suid });
-                
-                /*- Response object, we don't want stuff like salt, password and other values -*/
-                const responseData = {
-                    username: userData.username,
-                    displayname: userData.displayname,
-                    joined: userData.joined,
-                    role: userData.role,
-                    profile: `${process.env.SERVER_URL}/api/profile-data/image/${suid}`,
+        try{
+            MongoClient.connect(uri, async (_, client) => {
+                try{
+                    const db = client.db(dbs);
+                    
+                    /*- Find user -*/
+                    const userData = await db.collection("users").findOne({ suid });
+                    
+                    /*- Response object, we don't want stuff like salt, password and other values -*/
+                    const responseData = {
+                        username: userData.username,
+                        displayname: userData.displayname,
+                        joined: userData.joined,
+                        role: userData.role,
+                        profile: `${process.env.SERVER_URL}/api/profile-data/image/${suid}`,
+                    }
+                    
+                    /*- Send the response back -*/
+                    res.json({
+                        ...responseData,
+                        status: 200
+                    });
+                }catch{
+                    res.json({
+                        status: 404,
+                        message: dictionary.error.user.not_found
+                    });
                 }
-                
-                /*- Send the response back -*/
-                res.json({
-                    ...responseData,
-                    status: 200
-                });
-            }catch{
-                res.json({
-                    status: 404,
-                    message: dictionary.error.user.not_found
-                });
-            }
-        });
+            });
+        }catch{
+            res.sendStatus(404);
+        }
     });
 
     /*- Profile images -*/
@@ -289,23 +301,27 @@ module.exports = (() => {
         /*- All profile images are named after the users SUID -*/
         const suid = req.params["img"];
 
-        /*- Check if SUID was specified in headers -*/
-        if (!suid) {
-            return res.json({
-                message: dictionary.error.missing_fields,
-                status: 400
-            });
-        }
+        try{
+            /*- Check if SUID was specified in headers -*/
+            if (!suid) {
+                return res.json({
+                    message: dictionary.error.missing_fields,
+                    status: 400
+                });
+            }
 
-        /*- Check if the image exists -*/
-        if (!fs.existsSync(path.resolve(`uploads/profile/${suid}.jpg`))) {
-            return res.sendFile(
-                path.resolve(`data/images/default-user.jpg`)
-            );
-        }
+            /*- Check if the image exists -*/
+            if (!fs.existsSync(path.resolve(`uploads/profile/${suid}.jpg`))) {
+                return res.sendFile(
+                    path.resolve(`data/images/default-user.jpg`)
+                );
+            }
 
-        /*- Send the image back to the client -*/
-        res.sendFile(path.resolve(`uploads/profile/${suid}.jpg`));
+            /*- Send the image back to the client -*/
+            res.sendFile(path.resolve(`uploads/profile/${suid}.jpg`));
+        }catch{
+            res.sendStatus(404);
+        }
     });
 
     /*- TEMP -*/
