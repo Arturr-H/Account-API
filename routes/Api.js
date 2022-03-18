@@ -297,9 +297,10 @@ module.exports = (() => {
     });
 
     /*- Profile images -*/
-    app.get("/profile-data/image/:img/", (req, res) => {
+    app.get("/profile-data/image/:img", (req, res) => {
         /*- All profile images are named after the users SUID -*/
         const suid = req.params["img"];
+        console.log(suid)
 
         try{
             /*- Check if SUID was specified in headers -*/
@@ -319,7 +320,8 @@ module.exports = (() => {
 
             /*- Send the image back to the client -*/
             res.sendFile(path.resolve(`uploads/profile/${suid}.jpg`));
-        }catch{
+        }catch(e){
+            if (debug) console.log(e);
             res.sendStatus(404);
         }
     });

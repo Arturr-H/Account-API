@@ -17,7 +17,6 @@ const dbs = process.env.DBS;
 
 /*- All imported routes -*/
 const api = require("./routes/Api");
-const hej =" hej";
 
 /*- Use routes -*/
 app.use("/api", api);
@@ -26,7 +25,7 @@ app.use("/api", api);
 const PORT = process.env.PORT;
 
 /*- Main -*/
-app.get("/", (req, res) => {
+app.get("/", (_, res) => {
     MongoClient.connect(uri, (err, client) => {
         if (err) throw err;
 
@@ -35,7 +34,17 @@ app.get("/", (req, res) => {
             if (err) {
                 return console.log(err);
             }
-            res.send(items);
+            res.send(items.map(item => {
+
+                /*- Map all items to only contain information that isn't private -*/
+                return {
+                    username: item.username,
+                    displayname: item.displayname,
+                    joined: item.joined,
+                    role: item.role,
+                    profile: `${process.env.SERVER_URL}/api/profile-data/image/${item.suid}`,
+                }
+            }));
         });
     });
 });
