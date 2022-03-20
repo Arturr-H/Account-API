@@ -40,6 +40,9 @@ const fs = require("fs");
 /*- For reading cookies -*/
 const cookieParser = require("cookie-parser");
 
+/*- User types -*/
+const { User, SafeUser } = require("../data/models/User.js");
+
 /*- Immutable variables -*/
 const debug = process.env.DEBUG;
 const dictionary = yaml.load(fs.readFileSync(path.resolve("data/dict.yml"), "utf8")).dictionary;
@@ -62,7 +65,7 @@ module.exports = (() => {
     app.use(cookieParser());
 
     /*- api/create-account -*/
-    app.get("/create-account", async (req, res) => {
+    app.post("/create-account", async (req, res) => {
 
         try{
             const { email, username, displayname, password } = req.headers;
@@ -114,13 +117,17 @@ module.exports = (() => {
                         const suid = crypto.randomBytes(16).toString("hex");
             
                         /*- Small user info that might be used somewhere -*/
+                        const date = new Date();
                         const userInfo = {
-                            joined: new Date().toDateString(),
+                            joined: {
+                                prettified: getPrettifiedDate(date),
+                                unix: date.getTime()
+                            },
                             role: roles.user,
                         }
-            
-                        /*- Insert the new user -*/
-                        const insertUser = await db.collection("users").insertOne({
+
+                        /*- Create the user -*/
+                        const user = new User({
                             uid,
                             suid,
                             salt,
@@ -128,21 +135,32 @@ module.exports = (() => {
                             username,
                             displayname,
                             ...userInfo,
-                            password: hash, 
+                            password: hash,
+                            profile: `${process.env.SERVER_URL}/api/profile-data/image/${suid}`,
                         });
+            
+                        /*- Insert the new user -*/
+                        const insertUser = await db.collection("users").insertOne(user);
             
                         /*- If user was inserted -*/
                         if (insertUser.insertedCount === 1) {
-                            console.log("three")
                             return res.json({
                                 status: 200,
                                 message: dictionary.account_created,
+                            });
+                        }else{
+                            res.status(500).json({
+                                message: dictionary.error.internal,
+                                status: 500,
                             });
                         }
                     });
                 }
                 else{
-                    console.log("two", username, result)
+                    res.status(500).json({
+                        message: dictionary.error.internal,
+                        status: 500,
+                    });
                 }
             });
         }catch{
@@ -270,18 +288,14 @@ module.exports = (() => {
                     /*- Find user -*/
                     const userData = await db.collection("users").findOne({ suid });
                     
-                    /*- Response object, we don't want stuff like salt, password and other values -*/
-                    const responseData = {
-                        username: userData.username,
-                        displayname: userData.displayname,
-                        joined: userData.joined,
-                        role: userData.role,
+                    /*- Response object, we don't want stuff like salt, password and other values, so we use the SafeUser -*/
+                    const responseData = new SafeUser([...userData, {
                         profile: `${process.env.SERVER_URL}/api/profile-data/image/${suid}`,
-                    }
+                    }]);
                     
                     /*- Send the response back -*/
                     res.json({
-                        ...responseData,
+                        data: responseData,
                         status: 200
                     });
                 }catch{
@@ -418,4 +432,15 @@ const checkUsername = async (username, callback) => {
     }catch(err){
         return callback({ success: false, message: dictionary.error.internal });
     }
+}
+
+const getPrettifiedDate = (unixTime) => {
+    const months = variables.months;
+    const days = variables.days;
+
+    const date = new Date(unixTime);
+    const month = months[date.getMonth()];
+    const day = days[date.getDay()];
+
+    return `${day}, ${month} ${date.getDate()} - ${date.getFullYear()}`;
 }
