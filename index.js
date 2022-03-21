@@ -9,14 +9,18 @@ const app = express();
 const path = require("path");
 
 /*- Make .env files readable -*/
-require("dotenv").config({ path: path.resolve("config/.env") });
+require("dotenv").config({ path: path.resolve("config/.env.development") });
 
 /*- Mongo connection-string. Mostly defined in docker-compose -*/
 const uri = process.env.MONGO_URI_STRING;
 const dbs = process.env.DBS;
+const debug = process.env.DEBUG;
 
 /*- All imported routes -*/
 const api = require("./routes/Api");
+
+/*- User templates for filtering sensitive data -*/
+const { User, SafeUser } = require("./data/models/User.js");
 
 /*- Use routes -*/
 app.use("/api", api);
@@ -31,20 +35,11 @@ app.get("/", (_, res) => {
 
         const db = client.db(dbs);
         db.collection("users").find().toArray((err, items) => {
-            if (err) {
-                return console.log(err);
-            }
-            res.send(items.map(item => {
-
+            if (err && debug) return console.log(err);
+            res.send(items.map(item => 
                 /*- Map all items to only contain information that isn't private -*/
-                return {
-                    username: item.username,
-                    displayname: item.displayname,
-                    joined: item.joined,
-                    role: item.role,
-                    profile: `${process.env.SERVER_URL}/api/profile-data/image/${item.suid}`,
-                }
-            }));
+                new SafeUser(item)
+            ));
         });
     });
 });

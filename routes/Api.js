@@ -5,8 +5,11 @@ const express = require("express");
 /*- Mongo client to easily connect to mongoDB (in docker-compose) -*/
 const { MongoClient } = require("mongodb");
 
+/*- Path handling -*/
+const path = require("path");
+
 /*- Make .env files readable -*/
-require("dotenv").config();
+require("dotenv").config({ path: path.resolve("config/.env.development") });
 
 /*- For encrypting / hashing sensitive information -*/
 const crypto = require("crypto");
@@ -14,9 +17,6 @@ const crypto = require("crypto");
 /*- Mongo connection-string. Mostly defined in docker-compose -*/
 const uri = process.env.MONGO_URI_STRING;
 const dbs = process.env.DBS;
-
-/*- Path handling -*/
-const path = require("path");
 
 /*- Image uploading -*/
 const multer = require("multer");
@@ -31,7 +31,7 @@ const upload = multer({
 });
 
 /*- GM for image handling -*/
-const gm = require('gm').subClass({ imageMagick: true });
+const gm = require("gm").subClass({ imageMagick: true });
 
 /*- Yaml reader and fs lib (yaml requires fs to be in project) -*/
 const yaml = require("js-yaml");
@@ -383,10 +383,10 @@ module.exports = (() => {
                 function getCookie(cname) {
                     var name = cname + "=";
                     var decodedCookie = decodeURIComponent(document.cookie);
-                    var ca = decodedCookie.split(';');
+                    var ca = decodedCookie.split(";");
                     for(var i = 0; i <ca.length; i++) {
                         var c = ca[i];
-                        while (c.charAt(0) == ' ') {
+                        while (c.charAt(0) == " ") {
                             c = c.substring(1);
                         }
                         if (c.indexOf(name) == 0) {

@@ -31,7 +31,6 @@ const createAccount = async (name, email, password, displayName) => {
 
  - api/login &nbsp;&emsp;&emsp;&emsp;&emsp;&emsp;**Headers:** `email` `password`
  - api/profile-data &emsp;&emsp;**Headers:** `suid`
- - api/profile-data &emsp;&emsp;**Headers:** `suid`
  - api/profile-data/image/`suid`/
 
 ## Contributing
