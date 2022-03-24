@@ -402,7 +402,7 @@ module.exports = (() => {
     return app;
 })();
 
-const checkUsername = async (username, callback) => {
+const checkUsername = async (username, callback, test = false) => {
 
     /*- Check if username is too long -*/
     if (username.length > variables.username_len_max)     return callback({ success: false, message: dictionary.error.username.too_long });
@@ -418,17 +418,21 @@ const checkUsername = async (username, callback) => {
 
     /*- Check if username is already in use -*/
     try{
-        MongoClient.connect(uri, async (err, client) => {
-            if (err) console.log(err);
-            
-            const db = client.db(dbs);
-            db.collection("users").findOne({ username }, (_, user) => {
-
-                if (user) return callback({ success: false, message: dictionary.error.username.occupied });
-
-                return callback({ success: true });
+        if(!test){
+            MongoClient.connect(uri, async (err, client) => {
+                if (err) console.log(err);
+                
+                const db = client.db(dbs);
+                db.collection("users").findOne({ username }, (_, user) => {
+                    
+                    if (user) return callback({ success: false, message: dictionary.error.username.occupied });
+                    
+                    return callback({ success: true });
+                });
             });
-        });
+        }else{
+            return callback({ success: true });
+        }
     }catch(err){
         return callback({ success: false, message: dictionary.error.internal });
     }
@@ -443,4 +447,10 @@ const getPrettifiedDate = (unixTime) => {
     const day = days[date.getDay()];
 
     return `${day}, ${month} ${date.getDate()} - ${date.getFullYear()}`;
+}
+
+/*- Export for testing -*/
+module.exports = {
+    checkUsername,
+    getPrettifiedDate
 }

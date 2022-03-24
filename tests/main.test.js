@@ -13,6 +13,8 @@ require("dotenv").config({ path: path.resolve("config/.env.development") });
 /*- Put the variables you wanna check here -*/
 const { SERVER_URL, DEBUG } = process.env;
 
+const { checkUsername, getPrettifiedDate } = require(path.resolve("routes/Api.js"));
+
 const successMessagePadding = 20;
 
 /*- Success message -*/
@@ -36,13 +38,14 @@ const checkDBstatus = async () => {
     await fetch(SERVER_URL).then(data => {
         try {
             assert.equal(data.status, 200);
+
+            /*- If nothing failed -*/
+            succeed("DB status");
         }catch {
             return fail("DB status")
         }
     })
     
-    /*- If nothing failed -*/
-    succeed("DB status");
 }
 
 /*- Check if debug is on in production which it shouldn't -*/
@@ -57,8 +60,35 @@ const checkDebug = () => {
     succeed("DEBUG");
 }
 
+/*- Username check function test -*/
+const checkFN__checkUsername = async () => {
+
+    await checkUsername("username123", (d) => {
+        assert.equal(d.success, true);
+
+        /*- If nothing failed -*/
+        succeed("checkUsername");
+    }, true).catch(_ => {
+        return fail("checkUsername")
+    })
+}
+
+/*- Prettify date test -*/
+const checkFN__getPrettifiedDate = () => {
+    try {
+        assert.equal(getPrettifiedDate(1577836800000), "Thursday, January 1 - 2020");
+    }catch(e) {
+        return fail("getPrettifiedDate")
+    }
+
+    /*- If nothing failed -*/
+    succeed("getPrettifiedDate");
+}
+
 /*- MAIN -*/
 (() => {   
     checkDBstatus();
     checkDebug();
+    checkFN__checkUsername();
+    checkFN__getPrettifiedDate();
 })();
