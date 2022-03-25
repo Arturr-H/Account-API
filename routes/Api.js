@@ -9,7 +9,8 @@ const { MongoClient } = require("mongodb");
 const path = require("path");
 
 /*- Make .env files readable -*/
-require("dotenv").config({ path: path.resolve("config/.env.development") });
+require("dotenv").config({ path: path.resolve(`config/global.env`) });
+require("dotenv").config({ path: path.resolve(`config/.env.${process.env.DEBUG}`) });
 
 /*- For encrypting / hashing sensitive information -*/
 const crypto = require("crypto");
