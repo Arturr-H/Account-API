@@ -23,7 +23,7 @@ const api = require("./routes/Api");
 const { User, SafeUser } = require("./data/models/User.js");
 
 /*- Use routes -*/
-app.use("/api", api);
+app.use("/api", api.app);
 
 /*- Immutable variables -*/
 const PORT = process.env.PORT;

@@ -56,7 +56,52 @@ const roles = {
     user: "user",
 }
 
-console.log(dictionary.reserved_usernames);
+const checkUsername = async (username, callback, test = false) => {
+
+    /*- Check if username is too long -*/
+    if (username.length > variables.username_len_max)     return callback({ success: false, message: dictionary.error.username.too_long });
+    
+    /*- Check if username is too short -*/
+    if (username.length < variables.username_len_min)     return callback({ success: false, message: dictionary.error.username.too_short });
+    
+    /*- Check if username contains illegal characters -*/
+    if (username.match(/[^a-zA-Z0-9_\.]/))                return callback({ success: false, message: dictionary.error.username.illegal });
+    
+    /*- Check if username is reserved -*/
+    if (dictionary.reserved_usernames.includes(username)) return callback({ success: false, message: dictionary.error.username.reserved });
+
+    /*- Check if username is already in use -*/
+    try{
+        if(!test){
+            MongoClient.connect(uri, async (err, client) => {
+                if (err) console.log(err);
+                
+                const db = client.db(dbs);
+                db.collection("users").findOne({ username }, (_, user) => {
+                    
+                    if (user) return callback({ success: false, message: dictionary.error.username.occupied });
+                    
+                    return callback({ success: true });
+                });
+            });
+        }else{
+            return callback({ success: true });
+        }
+    }catch(err){
+        return callback({ success: false, message: dictionary.error.internal });
+    }
+}
+
+const getPrettifiedDate = (unixTime) => {
+    const months = variables.months;
+    const days = variables.days;
+
+    const date = new Date(unixTime);
+    const month = months[date.getMonth()];
+    const day = days[date.getDay()];
+
+    return `${day}, ${month} ${date.getDate()} - ${date.getFullYear()}`;
+}
 
 /*- Export it so that index.js or whatever main file can import this -*/
 module.exports = (() => {
@@ -315,7 +360,6 @@ module.exports = (() => {
     app.get("/profile-data/image/:img", (req, res) => {
         /*- All profile images are named after the users SUID -*/
         const suid = req.params["img"];
-        console.log(suid)
 
         try{
             /*- Check if SUID was specified in headers -*/
@@ -400,58 +444,9 @@ module.exports = (() => {
         `);
     });
 
-    return app;
+    return {
+        app:app,
+        checkUsername,
+        getPrettifiedDate
+    };
 })();
-
-const checkUsername = async (username, callback, test = false) => {
-
-    /*- Check if username is too long -*/
-    if (username.length > variables.username_len_max)     return callback({ success: false, message: dictionary.error.username.too_long });
-    
-    /*- Check if username is too short -*/
-    if (username.length < variables.username_len_min)     return callback({ success: false, message: dictionary.error.username.too_short });
-    
-    /*- Check if username contains illegal characters -*/
-    if (username.match(/[^a-zA-Z0-9_\.]/))                return callback({ success: false, message: dictionary.error.username.illegal });
-    
-    /*- Check if username is reserved -*/
-    if (dictionary.reserved_usernames.includes(username)) return callback({ success: false, message: dictionary.error.username.reserved });
-
-    /*- Check if username is already in use -*/
-    try{
-        if(!test){
-            MongoClient.connect(uri, async (err, client) => {
-                if (err) console.log(err);
-                
-                const db = client.db(dbs);
-                db.collection("users").findOne({ username }, (_, user) => {
-                    
-                    if (user) return callback({ success: false, message: dictionary.error.username.occupied });
-                    
-                    return callback({ success: true });
-                });
-            });
-        }else{
-            return callback({ success: true });
-        }
-    }catch(err){
-        return callback({ success: false, message: dictionary.error.internal });
-    }
-}
-
-const getPrettifiedDate = (unixTime) => {
-    const months = variables.months;
-    const days = variables.days;
-
-    const date = new Date(unixTime);
-    const month = months[date.getMonth()];
-    const day = days[date.getDay()];
-
-    return `${day}, ${month} ${date.getDate()} - ${date.getFullYear()}`;
-}
-
-/*- Export for testing -*/
-module.exports = {
-    checkUsername,
-    getPrettifiedDate
-}

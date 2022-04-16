@@ -14,7 +14,7 @@ const { DEBUG, APPLICATION_STATE } = process.env;
 require("dotenv").config({ path: path.resolve(`config/.env.${APPLICATION_STATE}`) });
 
 /*- Put the variables you wanna check here -*/
-const { SERVER_URL } = process.env;
+const { SERVER_URL, CDN_URL } = process.env;
 const { checkUsername, getPrettifiedDate } = require(path.resolve("routes/Api.js"));
 const successMessagePadding = 30;
 
@@ -23,7 +23,7 @@ const succeed = (i) => {
     const padding = successMessagePadding - i.toString().length;
     const paddingStr = Array(padding).fill(" ").join("");
 
-    console.log("\x1b[32m", `${i} ${paddingStr} | 200 OK |`);
+    console.log("\x1b[32m|", `${i} ${paddingStr} | 200 OK |`);
 }
 
 /*- Unsuccessful message -*/
@@ -31,10 +31,10 @@ const fail = (i, f = "Nothing provided.") => {
     const padding = successMessagePadding - i.toString().length;
     const paddingStr = Array(padding).fill(" ").join("");
 
-    console.log("\x1b[31m", `${i} ${paddingStr} | FAILED | :: ${f}`);
+    console.log("\x1b[31m|", `${i} ${paddingStr} | FAILED | :: ${f}`);
 }
 
-const initPattern = (e) => console.log(`${e?"\n":""}\x1b[32m+++++++++++++++++${!e?" ASYNC ":"+++++++"}+++++++++++++++++++`)
+const initPattern = (e) => console.log(`${e?"\n":""}\x1b[32m++++++++++++++++++${!e?" ASYNC ":"+++++++"}+++++++++++++++++++`)
 
 /*- Check if db is up -*/
 const checkDBstatus = async () => {
@@ -48,7 +48,20 @@ const checkDBstatus = async () => {
             return fail("DB status", `<${SERVER_URL}> is not responding`);
         }
     })
+}
 
+/*- Check if content delivery network is up -*/
+const checkCDNstatus = async () => {
+    await fetch(CDN_URL).then(data => {
+        try {
+            assert.equal(data.status, 200);
+
+            /*- If nothing failed -*/
+            succeed("CDN status");
+        } catch {
+            return fail("CDN status", `<${CDN_URL}> is not responding`);
+        }
+    })
 }
 
 /*- Check if debug is on in production which it shouldn't -*/
@@ -112,6 +125,7 @@ const checkApplicationState = () => {
     checkFN__checkUsername();
     checkFN__getPrettifiedDate();
     checkDBstatus();
+    checkCDNstatus();
 
     initPattern(false);
 })();
