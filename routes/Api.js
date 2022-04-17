@@ -34,7 +34,7 @@ const upload = multer({
 /*- GM for image handling -*/
 const gm = require("gm").subClass({ imageMagick: true });
 
-/*- Yaml reader and fs lib (yaml requires fs to be in project) -*/
+/*- Yaml reader and fs lib (yaml requires fs to be imported) -*/
 const yaml = require("js-yaml");
 const fs = require("fs");
 

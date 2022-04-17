@@ -1,8 +1,11 @@
-version: '3'
+version: "3"
 
 services:
   node:
-    build: .
+    build:
+      context: .
+      dockerfile: MAIN.Dockerfile
+
     container_name: "nodeapp"
     ports:
       - "8081:8081"
@@ -14,7 +17,7 @@ services:
 
   mongo:
     image: mongo:4
-    container_name: 'mongodb'
+    container_name: "mongodb"
     environment:
       - AUTH=yes
       - MONGODB_ADMIN_USER=artur
@@ -23,11 +26,27 @@ services:
       - MONGODB_APPLICATION_USER=aashrey
       - MONGODB_APPLICATION_PASS=admin123
     ports:
-      - '27017:27017'
+      - "27017:27017"
     volumes:
       - ./:/usr/src/app
       - mongodata:/data/db
     command: mongod
+
+  rust:
+    image: rust:1.59.0
+
+    build:
+      context: .
+      dockerfile: CLI.Dockerfile
+
+    volumes:
+      - ./:/usr/src/app
+
+    container_name: "rust"
+    command: "cargo run"
+    depends_on:
+      - node
+    restart: always
     
 volumes:
   mongodata:

@@ -1,0 +1,18 @@
+[package]
+name = "account_api_cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "account_api_cli"
+path = "src/main.rs"
+
+[dependencies]
+termcolor = "1.1"
+rand = "0.8"
+home = "0.5.3"
+
+[dependencies.mongodb]
+mongodb = "2.1.0"
+default-features = false
+features = ["sync"]
