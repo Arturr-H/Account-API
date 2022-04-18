@@ -8,7 +8,7 @@ mod output_handler;
 fn cli_loop(cmd_map:&Vec<commands::CommandStruct>, tag:&mut String) {
 
     /*- Command prefix -*/
-    print!("{}>", tag);
+    print!("{}> ", tag);
     std::io::stdout()
         .flush()
         .unwrap();
@@ -57,7 +57,7 @@ fn cli_loop(cmd_map:&Vec<commands::CommandStruct>, tag:&mut String) {
 fn main() {
 
     /*- Cli "start" tag (difficult to explain) -*/
-    let mut tag = String::from("");
+    let mut tag = String::from("==");
 
     /*- The commands that the user can use -*/
     let cmd_map:Vec<commands::CommandStruct> = commands::get_commands();

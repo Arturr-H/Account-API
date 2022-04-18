@@ -129,8 +129,8 @@ fn cmd(argv:Vec<String>) {
     output_handler::throw_res(Color::Green, &String::from_utf8_lossy(&result.stdout));
 }
 
-/*- Create a new user -*/
-fn create_user(argv:Vec<String>) {
+/*- Create a new document -*/
+fn create(argv:Vec<String>) {
 
     /*- Validate the input -*/
     if !check_argv(&argv) { return; }
@@ -143,22 +143,22 @@ fn create_user(argv:Vec<String>) {
 
     /*- A vector of keys and values that the user inputted -*/
     /*- The keys and values are strings like this - key:val-*/
-    let mut user_data:Vec<Vec<String>> = Vec::new();
+    let mut input_data:Vec<Vec<String>> = Vec::new();
 
     /*- Loop through the arguments -*/
     for arg in argv {
         /*- Split the argument into key and value -*/
         let split_arg = arg.split(":").collect::<Vec<&str>>();
 
-        /*- Push the key and value into the user_data vector -*/
-        user_data.push(split_arg.iter().map(|x| x.to_string()).collect());
+        /*- Push the key and value into the input_data vector -*/
+        input_data.push(split_arg.iter().map(|x| x.to_string()).collect());
     }
 
     /*- The document that the user wants to add with the keys and values -*/
     let mut doc = doc! { };
 
-    /*- Loop through the user_data vector -*/
-    for data in user_data {
+    /*- Loop through the input_data vector -*/
+    for data in input_data {
         /*- Add the key and value to the document -*/
         doc.insert(&data[0], &data[1]);
     }
@@ -166,7 +166,7 @@ fn create_user(argv:Vec<String>) {
     /*- Insert the document -*/
     coll.insert_one(doc, None).unwrap();
 
-    output_handler::throw_res(Color::Green, "User created!");
+    output_handler::throw_res(Color::Green, "Document created!");
 }
 
 /*- Get things from dbs -*/
@@ -186,17 +186,17 @@ fn get(argv:Vec<String>) {
 
     if to_get == "all" {
         /*- Get all the users -*/
-        let users = match coll.find(None, None) {
+        let documents = match coll.find(None, None) {
             Ok(cursor) => cursor,
             Err(_) => {
-                output_handler::throw_res(Color::Red, "Failed to get users!");
+                output_handler::throw_res(Color::Red, "Failed to get documents!");
                 return;
             }
         };
 
-        /*- Loop through and print every user -*/
-        for user in users.map(|doc| doc.unwrap()) {
-            println!("{}", user.to_string());
+        /*- Loop through and print every document -*/
+        for document in documents.map(|doc| doc.unwrap()) {
+            println!("{}", document.to_string());
         }
 
     }
@@ -219,7 +219,7 @@ fn get(argv:Vec<String>) {
             output_handler::throw_res(Color::Red, "Document not found!");
             return;
         }else {   
-            /*- Print the user -*/
+            /*- Print the document -*/
             println!("{:?}", document);
         }
     }
@@ -247,7 +247,7 @@ pub fn get_commands() -> Vec<CommandStruct<'static>> {
         CommandStruct { _name: "clear",  _usage: "clear all output - same as <reset>",         _bind: clear,           _param_required: false },
         CommandStruct { _name: "exit",   _usage: "exit the CLI",                               _bind: exit,            _param_required: false },
         CommandStruct { _name: "cmd",    _usage: "cmd <terminal_command>",                     _bind: cmd,             _param_required: true },
-        CommandStruct { _name: "create", _usage: "create <key:val> <some_key:some_val>",       _bind: create_user,     _param_required: true },
+        CommandStruct { _name: "create", _usage: "create <key:val> <some_key:some_val>",       _bind: create,          _param_required: true },
         CommandStruct { _name: "get",    _usage: "get ['all', 'where <key> is <val>']",        _bind: get,             _param_required: true },
         CommandStruct { _name: "shit",   _usage: "only for testing.",                          _bind: shit,            _param_required: false },
     ];
