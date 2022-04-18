@@ -12,6 +12,9 @@ RUN cargo build --release
 
 RUN sed -i 's#dummy.rs#src/main.rs#' Cargo.toml
 
-COPY . /your_work_dir
+COPY . .
 
-RUN cargo build --release
+## RUN cargo build --release
+
+## docker-compose run rust
+ENTRYPOINT cargo run --release

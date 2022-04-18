@@ -5,10 +5,10 @@ mod commands;
 mod output_handler;
 
 /*- Command line interface loop -*/
-fn cli_loop(cmd_map:&Vec<commands::CommandStruct>) {
+fn cli_loop(cmd_map:&Vec<commands::CommandStruct>, tag:&mut String) {
 
     /*- Command prefix -*/
-    print!(">");
+    print!("{}>", tag);
     std::io::stdout()
         .flush()
         .unwrap();
@@ -29,6 +29,13 @@ fn cli_loop(cmd_map:&Vec<commands::CommandStruct>) {
                                         .map(|s| s.to_string())
                                         .collect();
 
+    /*- Tag the terminal/cli input arrow thing -*/
+    if command_vec[0] == "tag" {
+        let input_tag = & command_vec[1];
+        *tag = input_tag.to_string();
+        return;
+    }
+
     for ( index, cmd ) in cmd_map.iter().enumerate() {
         /*- If the command is the same as the one in the command map -*/
         if cmd._name == command_vec[0] {
@@ -40,6 +47,8 @@ fn cli_loop(cmd_map:&Vec<commands::CommandStruct>) {
             output_handler::throw_res(Color::Rgb(255, 0, 0), 
                 format!("Command <{}> was not found", command_vec[0]).as_str()
             );
+
+            return;
         }
     }
 }
@@ -47,9 +56,12 @@ fn cli_loop(cmd_map:&Vec<commands::CommandStruct>) {
 /*- Start -*/
 fn main() {
 
+    /*- Cli "start" tag (difficult to explain) -*/
+    let mut tag = String::from("");
+
     /*- The commands that the user can use -*/
     let cmd_map:Vec<commands::CommandStruct> = commands::get_commands();
 
     /*- Command line interface loop -*/
-    loop { cli_loop(&cmd_map); };
+    loop { cli_loop(&cmd_map, &mut tag); };
 }

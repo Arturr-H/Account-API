@@ -32,7 +32,7 @@ services:
       - mongodata:/data/db
     command: mongod
 
-  rust:
+  cli:
     image: rust:1.59.0
 
     build:
