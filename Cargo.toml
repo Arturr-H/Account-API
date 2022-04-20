@@ -11,6 +11,13 @@ path = "src/main.rs"
 termcolor = "1.1"
 rand = "0.8"
 home = "0.5.3"
+serde = "1.0"
+serde_yaml = "0.8"
+regex = "1"
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+tokio = { version = "1", features = ["full"] }
+dotenv = "0.15.0"
+
 
 [dependencies.mongodb]
 mongodb = "2.1.0"

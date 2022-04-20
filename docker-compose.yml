@@ -46,6 +46,7 @@ services:
     command: "cargo run"
     depends_on:
       - node
+      - mongo
     restart: always
     
 volumes:

@@ -5,9 +5,27 @@ use mongodb::{
     bson::doc,
     sync::Client,
 };
+use std::io::stdin;
+use rand::prelude::*;
+use reqwest::{
+    header,
+    header::{ HeaderMap },
+    blocking::{ Client as HttpClientBLOCKING }
+};
 
+/*- Create random command usesthese default names n stuff -*/
+static NAMES: [&str; 25] = ["artur", "bob", "carl", "david", "emily", "frank", "gabriel", "harry", "ian", "james", "kate", "laura", "matt", "natalie", "olivia", "peter", "quinn", "rachel", "sarah", "taylor", "victoria", "wendy", "xavier", "yvonne", "zoey"];
+static LAST_NAMES: [&str; 12] = ["smith", "brown", "davis", "wilson", "williams", "bobson", "hoffman", "harrison", "beck", "jones", "jefferson", "doe"];
+static PASSWORDS: [&str; 3] = ["password", "12345", "safe"];
+fn get_random(list: &Vec<&str>) -> String {
+    let index = rand::thread_rng().gen_range(0..list.len());
+    return list[index].to_string();
+}
+
+/*- IMPORTANT: Green color = output, cyan = status messages like "clearing...", yellow = input -*/
 /*- The connection URI, might want to grab it from .env later -*/
 static MONGO_URI: &str = "mongodb://mongo:27017/nodeapp";
+static BACKEND_URL: &str = "https://wss.artur.red";
 fn initialize_client() -> mongodb::sync::Database {
     let client:mongodb::sync::Client = Client::with_uri_str(MONGO_URI).expect("Failed to initialize client");
     return client.database("DockerMongo");
@@ -35,18 +53,39 @@ fn check_argv(argv: &Vec<String>) -> bool {
     return true;
 }
 
+/*- Confirmation function that will be used for "dangerous functions" -*/
+fn confirm(question:&str) -> bool {
+
+    let mut input = String::new();
+
+    /*- Print the question -*/
+    output_handler::throw_res(Color::Yellow, format!("{} [y/n]", question).as_str());
+
+    /*- Get the standard input -*/
+    stdin()
+        .read_line(&mut input)
+        .expect("Failed to read line");
+    
+    input = input.trim().to_string();
+
+    if input == "y" { return true; };
+    return false;
+}
+
 /*=------------------=*/
 /*=----FUNCTIONS-----=*/
 /*=----▼▼▼▼▼▼▼▼▼-----=*/
 
 fn help(argv:Vec<String>) {
 
-    output_handler::throw_res(Color::Cyan, "Command parameters are documented like this: command <param> <param2>");
-    output_handler::throw_res(Color::Cyan, "Params are separated by spaces, and do not contain the angle brackets.");
-    output_handler::throw_res(Color::Cyan, "Sometimes parameters are optional, and are marked with a '?', like this: <param>?");
-    output_handler::throw_res(Color::Cyan, "Some functions can have diffrent input parameters. Like the get function:");
-    output_handler::throw_res(Color::Cyan, "get ['all', 'where <key> key <val>'] - these params are enclosed in square brackets.");
-    output_handler::throw_res(Color::Cyan, "The following commands are available:");
+    if &argv.len() == &0 {
+        output_handler::throw_res(Color::Cyan, "Command parameters are documented like this: command <param> <param2>");
+        output_handler::throw_res(Color::Cyan, "Params are separated by spaces, and do not contain the angle brackets.");
+        output_handler::throw_res(Color::Cyan, "Sometimes parameters are optional, and are marked with a '?', like this: <param>?");
+        output_handler::throw_res(Color::Cyan, "Some functions can have diffrent input parameters. Like the get function:");
+        output_handler::throw_res(Color::Cyan, "get ['all', 'where <key> key <val>'] - these params are enclosed in square brackets.");
+        output_handler::throw_res(Color::Cyan, "The following commands are available:");
+    }
 
     let mut all_commands:Vec<CommandStruct<'static>> = get_commands();
 
@@ -57,7 +96,7 @@ fn help(argv:Vec<String>) {
         /*- Get all commands-*/
         for command in &all_commands {
             if command._name == cmd_name {
-                println!("{}", command._usage);
+                output_handler::throw_res(Color::Green, command._usage);
                 return;
             }
         }
@@ -89,7 +128,7 @@ fn help(argv:Vec<String>) {
             cmd._name,
             " ".repeat(max_len - cmd._name.len())
         );
-        println!("| {}", cmd._usage);
+        output_handler::throw_res(Color::Green, cmd._usage);
     }
 }
 
@@ -135,6 +174,38 @@ fn create(argv:Vec<String>) {
     /*- Validate the input -*/
     if !check_argv(&argv) { return; }
 
+    if &argv[0] == "random" {
+        let client:HttpClientBLOCKING = reqwest::blocking::Client::new();
+
+        /*- POST headers -*/
+        let mut headers:HeaderMap = HeaderMap::new();
+
+        /*- The required headers are listed in API.js -*/
+        headers.insert( header::CONTENT_TYPE, header::HeaderValue::from_static("application/json") );
+        headers.insert( "username", get_random(&NAMES.to_vec()).to_string().parse().unwrap() );
+        headers.insert( "displayname", get_random(&NAMES.to_vec()).to_string().parse().unwrap() );
+        headers.insert( "email", format!("{}@{}.com", get_random(&NAMES.to_vec()), get_random(&LAST_NAMES.to_vec())).parse().unwrap() );
+        headers.insert( "password", get_random(&PASSWORDS.to_vec()).to_string().parse().unwrap() );
+
+        /*- Post with name and email headers -*/
+        let res = client.post(format!("{}/api/create-account", BACKEND_URL))
+            .headers(headers)
+            .send()
+            .unwrap_or_else(|e| {
+                output_handler::throw_res(Color::Red, format!("{}", e).as_str());
+                std::process::exit(1);
+            });
+
+            println!("shitting");
+
+        /*- Get the response -*/
+        let body = res.text().unwrap();
+
+        /*- Check if the response was successful -*/
+        println!("{}", body);
+        return;
+    }
+
     /*- Get the database and the collection that we are using -*/
     let db:mongodb::sync::Database = initialize_client();
 
@@ -169,11 +240,109 @@ fn create(argv:Vec<String>) {
     output_handler::throw_res(Color::Green, "Document created!");
 }
 
+/*- Delete documents -*/
+fn delete(argv:Vec<String>) {
+
+    /*- Get the database and the collection that we are using -*/
+    let db:mongodb::sync::Database = initialize_client();
+
+    /*- User collection -*/
+    let coll = db.collection::<mongodb::bson::Document>("users");
+
+    let _get_where_is = |key:&String, val:&String| -> mongodb::sync::Cursor<mongodb::bson::Document> {
+
+        /*- Get the document by the key and value -*/
+        let documents = coll.find(Some(doc! { key:val }), None).unwrap();
+
+        /*- Print the document -*/
+        return documents;
+    };
+
+    /*- If the user wants to delete all documents -*/
+    if &argv.len() == &1 && &argv[0] == "all" {
+        if confirm("Delete all documents?") == true {
+
+            /*- Delete everything -*/
+            coll.delete_many(doc! { }, None).unwrap();
+
+            output_handler::throw_res(Color::Green, "All documents deleted!");
+        }
+    }else if &argv.len() >= &5 {
+
+        /*- Get the key and value -*/
+        let key = &argv[2];
+        let val = &argv[4];
+
+        /*- Get the documents -*/
+        let amount_of_documents = _get_where_is(key, val).count();
+
+        /*- If there are no documents -*/
+        if &amount_of_documents == &0 {
+            output_handler::throw_res(Color::Red, "No documents found!");
+            return;
+        }else {
+            /*- Delete the documents -*/
+            if confirm(format!("Delete {} document(s)?", &amount_of_documents).as_str()) == true {
+                coll.delete_many(doc! { key:val }, None).unwrap();
+                output_handler::throw_res(Color::Green,
+                    format!("{} document(s) deleted!", &amount_of_documents).as_str()
+                );
+            }
+        }
+    }
+}
+
+/*- Update documents -*/
+fn update(argv:Vec<String>) {
+
+    /*- Get the database and the collection that we are using -*/
+    let db:mongodb::sync::Database = initialize_client();
+
+    /*- User collection -*/
+    let coll = db.collection::<mongodb::bson::Document>("users");
+
+    //Object id as first parameter, key and value as second parameter (that we want to update)
+    //Find the document by the id and update it
+    //Get the document by the input id
+    let doc = coll.find_one(Some(doc! { "_id":argv[0].parse::<mongodb::bson::oid::ObjectId>().unwrap() }), None).unwrap();
+
+    /*- If the document is not found -*/
+    if doc.is_none() {
+        output_handler::throw_res(Color::Red, "Document not found!");
+        return;
+    }else {
+        /*- Get the document -*/
+        let mut doc = doc.unwrap();
+
+        /*- Get the key and value -*/
+        let kv = argv[1].split(":").collect::<Vec<&str>>();
+
+        /*- First we'll check if the key already exists -*/
+        if doc.contains_key(&kv[0]) {
+            /*- If the key already exists -*/
+            if confirm(format!("The key <{}> ({}) already exists. Do you want to overwrite it?", &kv[0], doc.get(&kv[0]).unwrap()).as_str()) == true {
+                /*- Update the document -*/
+                doc.insert(kv[0], kv[1]);
+            }else {
+                return;
+            }
+        }else {
+            /*- If the key doesn't exist -*/
+            doc.insert(kv[0], kv[1]);
+        }
+        
+        /*- Update the document -*/
+        coll.replace_one(doc! { "_id":argv[0].parse::<mongodb::bson::oid::ObjectId>().unwrap() }, doc, None).unwrap();
+
+        output_handler::throw_res(Color::Green, "Document updated!");
+    }
+}
+
 /*- Get things from dbs -*/
 fn get(argv:Vec<String>) {
 
     /*- Validate the input -*/
-    if !check_argv(&argv) { return; }
+    if !check_argv(&argv) { return }
     
     /*- Get the database and the collection that we are using -*/
     let db:mongodb::sync::Database = initialize_client();
@@ -184,47 +353,97 @@ fn get(argv:Vec<String>) {
     /*- What the user wants to get -*/
     let to_get = &argv[0];
 
-    if to_get == "all" {
+    //
+    //  FUNCTIONS
+    //
+
+    /*- The where <k> is <v> function -*/
+    let _get_where_is = |key:&String, val:&String| -> mongodb::sync::Cursor<mongodb::bson::Document> {
+
+        /*- Get the document by the key and value -*/
+        let documents = coll.find(Some(doc! { key:val }), None).unwrap();
+
+        /*- Print the document -*/
+        return documents;
+    };
+    /*- The get-all-documents-function -*/
+    let _get_all = || -> Vec<mongodb::bson::Document> {
         /*- Get all the users -*/
         let documents = match coll.find(None, None) {
             Ok(cursor) => cursor,
             Err(_) => {
                 output_handler::throw_res(Color::Red, "Failed to get documents!");
-                return;
+                return vec![];
             }
         };
 
-        /*- Loop through and print every document -*/
-        for document in documents.map(|doc| doc.unwrap()) {
-            println!("{}", document.to_string());
-        }
+        return documents.map(|doc| doc.unwrap()).collect();
+    };
 
+    //
+    //  END FUNCTIONS
+    //
+
+    if to_get == "all" && &argv.len() == &1 {
+        /*- Get all the users -*/
+        let documents = _get_all();
+
+        /*- Loop through and print every document -*/
+        for doc in documents {
+            output_handler::throw_res(Color::Green, &doc.to_string());
+        }
     }
 
     /*- This command will look like this: Get where name is artur 
         aka search for a document with the matching k&v:s         -*/
-    else if &argv.len() >= &3 && to_get == "where" && &argv[2] == "is" {
-
+    else if &argv.len() >= &5 && &argv[1] == "where" {
         // where=0 key=1 is=2 value=3
         /*- Key -*/
-        let k = &argv[1];
+        let k = &argv[2];
 
         /*- Value -*/
-        let v = &argv[3];
+        let v = &argv[4];
 
         /*- Get the document by the key and value -*/
-        let document = coll.find_one(Some(doc! { k:v }), None).unwrap();
-
-        if document.is_none() {
-            output_handler::throw_res(Color::Red, "Document not found!");
-            return;
-        }else {   
-            /*- Print the document -*/
-            println!("{:?}", document);
+        let documents = _get_where_is(k, v);
+        for doc in documents {
+            output_handler::throw_res(Color::Green, &doc.unwrap().to_string());
         }
     }
 
+    /*- Get the length of all documents -*/
+    else if to_get == "length" && &argv.len() >= &2 && &argv[1] == "of" {
+        let get_of = &argv[2];
 
+        if get_of == "all" && argv.len() == 3 {
+            /*- Get all the users -*/
+            let documents = _get_all();
+
+            /*- Print the length of all the documents -*/
+            output_handler::throw_res(Color::Green,
+                &documents.len().to_string()
+            );
+        }else if &argv.len() >= &6 && &argv[3] == "where" && &argv[5] == "is" {
+            // -1  0      1  2   3     4    5  6
+            // get length of all where name is artur
+
+            /*- Key -*/
+            let k = &argv[4];
+
+            /*- Value -*/
+            let v = &argv[6];
+
+            /*- Get the document by the key and value -*/
+            let documents:Vec<mongodb::bson::Document> = _get_where_is(k, v).map(|doc| doc.unwrap()).collect();
+
+            /*- Print the length of the document -*/
+            output_handler::throw_res(Color::Green,
+                &documents.len().to_string()
+            );
+        }else {
+            output_handler::throw_res(Color::Red, "Invalid parameters!");
+        }
+    }
     else {
         output_handler::throw_res(Color::Red, "Invalid syntax! Write <help get> for further information.");
     }
@@ -248,7 +467,9 @@ pub fn get_commands() -> Vec<CommandStruct<'static>> {
         CommandStruct { _name: "exit",   _usage: "exit the CLI",                               _bind: exit,            _param_required: false },
         CommandStruct { _name: "cmd",    _usage: "cmd <terminal_command>",                     _bind: cmd,             _param_required: true },
         CommandStruct { _name: "create", _usage: "create <key:val> <some_key:some_val>",       _bind: create,          _param_required: true },
-        CommandStruct { _name: "get",    _usage: "get ['all', 'where <key> is <val>']",        _bind: get,             _param_required: true },
+        CommandStruct { _name: "get",    _usage: "get ['all', 'all where <key> is <val>', 'length of [all, where <key> is <val>]']",        _bind: get,             _param_required: true },
         CommandStruct { _name: "shit",   _usage: "only for testing.",                          _bind: shit,            _param_required: false },
+        CommandStruct { _name: "delete", _usage: "delete [all, all where <key> is <val>]",     _bind: delete,          _param_required: true },
+        CommandStruct { _name: "update", _usage: "update <objectid> <key:val>",                _bind: update,          _param_required: true },
     ];
 }
