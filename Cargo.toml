@@ -17,7 +17,7 @@ regex = "1"
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 tokio = { version = "1", features = ["full"] }
 dotenv = "0.15.0"
-
+lazy_static = "0.1"
 
 [dependencies.mongodb]
 mongodb = "2.1.0"

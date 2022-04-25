@@ -12,6 +12,15 @@ use reqwest::{
     header::{ HeaderMap },
     blocking::{ Client as HttpClientBLOCKING }
 };
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    #[allow(deprecated)]
+    static ref CURRENT_COLLECTION: Mutex<String> = Mutex::new(String::from("users"));
+    #[allow(deprecated)]
+    static ref CURRENT_DATABASE: Mutex<String> = Mutex::new(String::from("DockerMongo"));
+}
 
 /*- Create random command usesthese default names n stuff -*/
 static NAMES: [&str; 25] = ["artur", "bob", "carl", "david", "emily", "frank", "gabriel", "harry", "ian", "james", "kate", "laura", "matt", "natalie", "olivia", "peter", "quinn", "rachel", "sarah", "taylor", "victoria", "wendy", "xavier", "yvonne", "zoey"];
@@ -28,7 +37,7 @@ static MONGO_URI: &str = "mongodb://mongo:27017/nodeapp";
 static BACKEND_URL: &str = "https://wss.artur.red";
 fn initialize_client() -> mongodb::sync::Database {
     let client:mongodb::sync::Client = Client::with_uri_str(MONGO_URI).expect("Failed to initialize client");
-    return client.database("DockerMongo");
+    return client.database(CURRENT_DATABASE.lock().unwrap().as_str());
 }
 
 /*- All the parameters a user-variable has -*/
@@ -116,7 +125,8 @@ fn help(argv:Vec<String>) {
         }
     }
 
-    all_commands.push(CommandStruct { _name: "tag", _usage: "tag <name> - tags the input arrow", _param_required: false, _bind: help });
+    /*- This command is special, it. doesn't exist in the command vec -*/
+    all_commands.push(CommandStruct { _name: "tag", _usage: "tag <name> - tags the input arrow", _param_required: true, _bind: help });
 
     /*- Display them -*/
     for cmd in &all_commands {
@@ -210,7 +220,7 @@ fn create(argv:Vec<String>) {
     let db:mongodb::sync::Database = initialize_client();
 
     /*- User collection -*/
-    let coll = db.collection::<mongodb::bson::Document>("users");
+    let coll = db.collection::<mongodb::bson::Document>(CURRENT_COLLECTION.lock().unwrap().as_str());
 
     /*- A vector of keys and values that the user inputted -*/
     /*- The keys and values are strings like this - key:val-*/
@@ -247,7 +257,7 @@ fn delete(argv:Vec<String>) {
     let db:mongodb::sync::Database = initialize_client();
 
     /*- User collection -*/
-    let coll = db.collection::<mongodb::bson::Document>("users");
+    let coll = db.collection::<mongodb::bson::Document>(CURRENT_COLLECTION.lock().unwrap().as_str());
 
     let _get_where_is = |key:&String, val:&String| -> mongodb::sync::Cursor<mongodb::bson::Document> {
 
@@ -299,7 +309,7 @@ fn update(argv:Vec<String>) {
     let db:mongodb::sync::Database = initialize_client();
 
     /*- User collection -*/
-    let coll = db.collection::<mongodb::bson::Document>("users");
+    let coll = db.collection::<mongodb::bson::Document>(CURRENT_COLLECTION.lock().unwrap().as_str());
 
     //Object id as first parameter, key and value as second parameter (that we want to update)
     //Find the document by the id and update it
@@ -348,7 +358,7 @@ fn get(argv:Vec<String>) {
     let db:mongodb::sync::Database = initialize_client();
 
     /*- User collection -*/
-    let coll = db.collection::<mongodb::bson::Document>("users");
+    let coll = db.collection::<mongodb::bson::Document>(CURRENT_COLLECTION.lock().unwrap().as_str());
 
     /*- What the user wants to get -*/
     let to_get = &argv[0];
@@ -417,12 +427,10 @@ fn get(argv:Vec<String>) {
 
         if get_of == "all" && argv.len() == 3 {
             /*- Get all the users -*/
-            let documents = _get_all();
+            let documents = coll.count_documents(None, None).unwrap();
 
             /*- Print the length of all the documents -*/
-            output_handler::throw_res(Color::Green,
-                &documents.len().to_string()
-            );
+            output_handler::throw_res(Color::Green, &documents.to_string());
         }else if &argv.len() >= &6 && &argv[3] == "where" && &argv[5] == "is" {
             // -1  0      1  2   3     4    5  6
             // get length of all where name is artur
@@ -449,6 +457,47 @@ fn get(argv:Vec<String>) {
     }
 }
 
+/*- Switch collection -*/
+fn collection(argv:Vec<String>) {
+
+    /*- Validate the input -*/
+    if !check_argv(&argv) { return }
+
+    if &argv.len() > &1 && &argv[0] == "switch" {
+
+        /*- The collection the user wants to work with -*/
+        let to_coll = &argv[1];
+
+        /*- Change the CURRENT_COLLECTION -*/
+        *CURRENT_COLLECTION.lock().unwrap() = to_coll.to_string();
+    }else if &argv[0] == "get" {
+        
+        /*- Show the user what collection they're in -*/
+        output_handler::throw_res(Color::Green, &CURRENT_COLLECTION.lock().unwrap().to_string());
+    }
+}
+
+/*- Switch database -*/
+fn database(argv:Vec<String>) {
+
+    /*- Validate the input -*/
+    if !check_argv(&argv) { return }
+
+    if &argv.len() > &1 && &argv[0] == "switch" {
+
+        /*- The database the user wants to work with -*/
+        let to_db = &argv[1];
+
+        /*- Change the CURRENT_DATABASE -*/
+        *CURRENT_DATABASE.lock().unwrap() = to_db.to_string();
+
+    }else if &argv[0] == "get" {
+        
+        /*- Show the user what database they're working with -*/
+        output_handler::throw_res(Color::Green, &CURRENT_DATABASE.lock().unwrap().to_string());
+    }
+}
+
 fn shit<P>(_:P) {
     output_handler::throw_res(Color::Cyan, "Shitting right now...");
 }
@@ -461,15 +510,17 @@ fn shit<P>(_:P) {
 /*- Return all commands -*/
 pub fn get_commands() -> Vec<CommandStruct<'static>> {
     return vec![
-        CommandStruct { _name: "help",   _usage: "help <command name>?",                       _bind: help,            _param_required: false },
-        CommandStruct { _name: "reset",  _usage: "clear all output - same as <clear>",         _bind: reset,           _param_required: false },
-        CommandStruct { _name: "clear",  _usage: "clear all output - same as <reset>",         _bind: clear,           _param_required: false },
-        CommandStruct { _name: "exit",   _usage: "exit the CLI",                               _bind: exit,            _param_required: false },
-        CommandStruct { _name: "cmd",    _usage: "cmd <terminal_command>",                     _bind: cmd,             _param_required: true },
-        CommandStruct { _name: "create", _usage: "create <key:val> <some_key:some_val>",       _bind: create,          _param_required: true },
-        CommandStruct { _name: "get",    _usage: "get ['all', 'all where <key> is <val>', 'length of [all, where <key> is <val>]']",        _bind: get,             _param_required: true },
-        CommandStruct { _name: "shit",   _usage: "only for testing.",                          _bind: shit,            _param_required: false },
-        CommandStruct { _name: "delete", _usage: "delete [all, all where <key> is <val>]",     _bind: delete,          _param_required: true },
-        CommandStruct { _name: "update", _usage: "update <objectid> <key:val>",                _bind: update,          _param_required: true },
+        CommandStruct { _name: "help",       _usage: "help <command name>?",                            _bind: help,            _param_required: false },
+        CommandStruct { _name: "reset",      _usage: "clear all output - same as <clear>",              _bind: reset,           _param_required: false },
+        CommandStruct { _name: "clear",      _usage: "clear all output - same as <reset>",              _bind: clear,           _param_required: false },
+        CommandStruct { _name: "exit",       _usage: "exit the CLI",                                    _bind: exit,            _param_required: false },
+        CommandStruct { _name: "cmd",        _usage: "cmd <terminal_command>",                          _bind: cmd,             _param_required: true },
+        CommandStruct { _name: "create",     _usage: "create <key:val> <some_key:some_val>",            _bind: create,          _param_required: true },
+        CommandStruct { _name: "get",        _usage: "get ['all', 'all where <key> is <val>', 'length of ['all', 'where <key> is <val>']']", _bind: get, _param_required: true },
+        CommandStruct { _name: "shit",       _usage: "only for testing.",                               _bind: shit,            _param_required: false },
+        CommandStruct { _name: "delete",     _usage: "delete [all, all where <key> is <val>]",          _bind: delete,          _param_required: true },
+        CommandStruct { _name: "update",     _usage: "update <objectid> <key:val>",                     _bind: update,          _param_required: true },
+        CommandStruct { _name: "collection", _usage: "collection ['switch <collection_name>', 'get']",  _bind: collection,      _param_required: true },
+        CommandStruct { _name: "database",   _usage: "database ['switch <database_name>', 'get']",      _bind: database,        _param_required: true },
     ];
 }

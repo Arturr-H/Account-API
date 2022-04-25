@@ -38,7 +38,7 @@ class SafeUser {
         this.displayname = props.displayname;
         this.joined = props.joined;
         this.role = props.role;
-        this.profile = `${process.env.SERVER_URL}/api/profile-data/image/${props.suid}`;
+        this.profile = `${process.env.CDN_URL}/api/profile-data/image/${props.suid}`;
     }
 
     /*- Getters -*/

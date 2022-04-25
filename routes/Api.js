@@ -182,7 +182,7 @@ module.exports = (() => {
                             displayname,
                             ...userInfo,
                             password: hash,
-                            profile: `${process.env.SERVER_URL}/api/profile-data/image/${suid}`,
+                            profile: `${process.env.CND_URL}/api/profile-data/image/${suid}`,
                         });
             
                         /*- Insert the new user -*/
@@ -335,9 +335,7 @@ module.exports = (() => {
                     const userData = await db.collection("users").findOne({ suid });
                     
                     /*- Response object, we don't want stuff like salt, password and other values, so we use the SafeUser -*/
-                    const responseData = new SafeUser([...userData, {
-                        profile: `${process.env.SERVER_URL}/api/profile-data/image/${suid}`,
-                    }]);
+                    const responseData = new SafeUser(userData);
                     
                     /*- Send the response back -*/
                     res.json({
