@@ -21,10 +21,10 @@ fn cli_loop(cmd_map:&Vec<commands::CommandStruct>, tag:&mut String, previous_cmd
     /*- The command that the user inputted -*/
     let mut command = String::from("");
 
-    /*- Get the user input -*/
-    std::io::stdin()
-        .read_to_string(&mut command)
-        .unwrap_or_default();
+    /*- Get the user input as valid utf-8 -*/
+    if let Err (_) = std::io::stdin().read_line(&mut command) {
+        output_handler::throw_res(Color::Red, "Please use ASCII characters only.");
+    }
 
     if command.trim() == "" { return; };
 
