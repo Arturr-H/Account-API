@@ -1,6 +1,7 @@
 use std::io::Write;
 use termcolor::{ Color };
 use mongodb::{ sync::Client };
+use std::io::Read;
 
 mod commands;
 mod output_handler;
@@ -18,12 +19,12 @@ fn cli_loop(cmd_map:&Vec<commands::CommandStruct>, tag:&mut String, previous_cmd
         .unwrap();
 
     /*- The command that the user inputted -*/
-    let mut command = String::new();
+    let mut command = String::from("");
 
     /*- Get the user input -*/
     std::io::stdin()
-        .read_line(&mut command)
-        .expect("Failed to read line");
+        .read_to_string(&mut command)
+        .unwrap_or_default();
 
     if command.trim() == "" { return; };
 
