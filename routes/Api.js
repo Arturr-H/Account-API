@@ -116,6 +116,8 @@ module.exports = (() => {
         try{
             const { email, username, displayname, password } = req.headers;
 
+            console.log(email, username, displayname, password);
+
             /*- Check if fields are missing -*/
             if (!email || !username || !displayname || !password) {
 
@@ -182,7 +184,7 @@ module.exports = (() => {
                             displayname,
                             ...userInfo,
                             password: hash,
-                            profile: `${process.env.CND_URL}/api/profile-data/image/${suid}`,
+                            profile: `${process.env.CDN_URL}/api/profile-data/image/${suid}`,
                         });
             
                         /*- Insert the new user -*/
@@ -193,6 +195,13 @@ module.exports = (() => {
                             return res.json({
                                 status: 200,
                                 message: dictionary.account_created,
+                                data: {
+                                    uid: user.uid,
+                                    suid: user.suid,
+                                    username: user.username,
+                                    displayname: user.displayname,
+                                    profile: user.profile,
+                                }
                             });
                         }else{
                             res.status(500).json({
@@ -256,7 +265,11 @@ module.exports = (() => {
                         message: dictionary.status.success,
                         status: 200,
                         data: {
-                            uid: user.uid
+                            uid: user.uid,
+                            suid: user.suid,
+                            username: user.username,
+                            displayname: user.displayname,
+                            profile: user.profile,
                         }
                     });
                 });

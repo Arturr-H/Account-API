@@ -9,7 +9,7 @@ const app = express();
 const path = require("path");
 
 /*- Make .env files readable -*/
-require("dotenv").config({ path: path.resolve("config/.env.development") });
+require("dotenv").config({ path: path.resolve("config/.env.production") });
 
 /*- Mongo connection-string. Mostly defined in docker-compose -*/
 const uri = process.env.MONGO_URI_STRING;

@@ -7,6 +7,6 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 8081
+EXPOSE 8080
 
 CMD ["./node_modules/nodemon/bin/nodemon.js"]
