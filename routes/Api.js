@@ -185,6 +185,7 @@ module.exports = (() => {
                             ...userInfo,
                             password: hash,
                             profile: `${process.env.CDN_URL}/api/profile-data/image/${suid}`,
+                            friends: [],
                         });
             
                         /*- Insert the new user -*/
@@ -396,33 +397,136 @@ module.exports = (() => {
         }
     });
 
-    /*- TEMP -*/
-    app.get("/delete", (_, res) => {
+    /*- Add friend -*/
+    app.post("/add-friend", (req, res) => {
 
-        /*- TEMP -*/
-        try {
-            MongoClient.connect(uri, (_, client) => {
+        /*- We don't want to use the SUID as an input, because
+            that could lead to people adding friends to accounts
+            that isn't theirs. The UID is more safe  -*/
+        const { uid, friend } = req.headers;
 
-                const db = client.db(dbs);
-                db.collection("users").deleteMany({}, () => {
-                    return res.json({
-                        message: dictionary.status.success,
-                        status: 200,
-                    });
-                });
-            });
-        } catch {
+        /*- Check if the SUID or UID wasn't specified in headers -*/
+        if (!friend || !uid) {
             return res.json({
-                message: dictionary.status.failure,
-                status: 404,
+                message: dictionary.error.missing_fields,
+                status: 400
             });
         }
+
+        /*- Get the user by their UID -*/
+        try{
+            MongoClient.connect(uri, async (_, client) => {
+                try{
+                    const db = client.db(dbs);
+                    
+                    /*- Find user -*/
+                    const userData = await db.collection("users").findOne({ uid });
+
+                    /*- Check if the user exists -*/
+                    if (!userData) {
+                        return res.json({
+                            message: dictionary.error.user.not_found,
+                            status: 404
+                        });
+                    }
+
+                    /*- Check if the user is already friends with the friend,
+                        we want to remove them as a friend -*/
+                    if (userData.friends.includes(friend)) {
+                        /*- Remove the friend -*/
+                        await db.collection("users").updateOne({ uid }, { $pull: { friends: friend } });
+
+                        /*- Send the response back -*/
+                        return res.json({
+                            status: 200,
+                        });
+                    }
+
+                    /*- Add the friend to the user's friends -*/
+                    await db.collection("users").updateOne({ uid }, { $push: { friends: friend } });
+
+                    /*- Send the response back -*/
+                    res.json({
+                        status: 200,
+                    });
+
+                }catch(e){
+                    if (debug) console.log(e);
+                    res.json({
+                        status: 404,
+                    });
+                }
+            });
+        }catch(e){
+            if (debug) console.log(e);
+            res.sendStatus(404);
+        }
     });
+
+    /*- Get friends -*/
+    app.get("/get-friends-data", (req, res) => {
+        const { suid } = req.headers;
+
+        /*- Check if SUID was specified in headers -*/
+        if (!suid) {
+            return res.json({
+                message: dictionary.error.missing_fields,
+                status: 400
+            });
+        }
+
+        /*- Search for the account using the SUID -*/
+        try{
+            MongoClient.connect(uri, async (_, client) => {
+                try{
+                    const db = client.db(dbs);
+
+                    /*- Find user -*/
+                    const userData = await db.collection("users").findOne({ suid });
+
+                    /*- Check if the user exists -*/
+                    if (!userData) {
+                        return res.json({
+                            message: dictionary.error.user.not_found,
+                            status: 404
+                        });
+                    }
+
+                    /*- Get the friends -*/
+                    const friends = userData.friends;
+
+                    /*- Get the data for each friend -*/
+                    const friendsData = await db.collection("users").find({ suid: { $in: friends } }).toArray();
+
+                    /*- If we don't do this, a lot of stuff will be leaked,
+                        we need to map every friend to a SafeUser which
+                        prevents sensitive data from being leaked -*/
+                    const responseData = friendsData.map(friend => new SafeUser(friend));
+
+                    /*- Send the response back -*/
+                    res.json({
+                        data: responseData,
+                        status: 200
+                    });
+
+                }catch(e){
+                    if (debug) console.log(e);
+                    res.json({
+                        status: 404,
+                    });
+                }
+            });
+        }catch(e){
+            if (debug) console.log(e);
+            res.sendStatus(404);
+        }
+    });
+
 
     /*- temporary image upload, html form -*/
     app.get("/temp", (req, res) => {
         res.send(`
-            <form action="https://wss.artur.red/api/profile-upload" method="post" enctype="multipart/form-data">
+            <form action="https://artur.red/api/profile-upload" method="post" enctype="multipart/form-data">
                 <input type="file" name="profile-file">
                 <input type="submit" value="Upload">
             </form>

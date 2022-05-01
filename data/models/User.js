@@ -11,6 +11,7 @@ class User {
         this.joined = props.joined;
         this.role = props.role;
         this.profile = props.profile;
+        this.friends = props.friends;
     }
 
     /*- Getters -*/
@@ -25,7 +26,8 @@ class User {
             displayname: this.displayname,
             joined: this.joined,
             role: this.role,
-            profile: this.profile
+            profile: this.profile,
+            friends: this.friends
         }
     }
 }
@@ -39,6 +41,7 @@ class SafeUser {
         this.joined = props.joined;
         this.role = props.role;
         this.profile = `${process.env.CDN_URL}/api/profile-data/image/${props.suid}`;
+        this.friends = props.friends;
     }
 
     /*- Getters -*/
@@ -49,7 +52,8 @@ class SafeUser {
             displayname: this.displayname,
             joined: this.joined,
             role: this.role,
-            profile: this.profile
+            profile: this.profile,
+            friends: this.friends
         }
     }
 }
