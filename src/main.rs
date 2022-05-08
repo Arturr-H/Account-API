@@ -1,7 +1,6 @@
 use std::io::Write;
 use termcolor::{ Color };
 use mongodb::{ sync::Client };
-use std::io::Read;
 
 mod commands;
 mod output_handler;

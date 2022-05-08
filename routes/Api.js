@@ -403,10 +403,10 @@ module.exports = (() => {
         /*- We don't want to use the SUID as an input, because
             that could lead to people adding friends to accounts
             that isn't theirs. The UID is more safe  -*/
-        const { uid, friend } = req.headers;
+        const { suid, friend } = req.headers;
 
         /*- Check if the SUID or UID wasn't specified in headers -*/
-        if (!friend || !uid) {
+        if (!friend || !suid) {
             return res.json({
                 message: dictionary.error.missing_fields,
                 status: 400
@@ -420,7 +420,7 @@ module.exports = (() => {
                     const db = client.db(dbs);
                     
                     /*- Find user -*/
-                    const userData = await db.collection("users").findOne({ uid });
+                    const userData = await db.collection("users").findOne({ suid });
 
                     /*- Check if the user exists -*/
                     if (!userData) {
@@ -434,7 +434,7 @@ module.exports = (() => {
                         we want to remove them as a friend -*/
                     if (userData.friends.includes(friend)) {
                         /*- Remove the friend -*/
-                        await db.collection("users").updateOne({ uid }, { $pull: { friends: friend } });
+                        await db.collection("users").updateOne({ suid }, { $pull: { friends: friend } });
 
                         /*- Send the response back -*/
                         return res.json({
@@ -443,7 +443,7 @@ module.exports = (() => {
                     }
 
                     /*- Add the friend to the user's friends -*/
-                    await db.collection("users").updateOne({ uid }, { $push: { friends: friend } });
+                    await db.collection("users").updateOne({ suid }, { $push: { friends: friend } });
 
                     /*- Send the response back -*/
                     res.json({

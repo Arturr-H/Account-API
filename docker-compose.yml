@@ -47,7 +47,6 @@ services:
     depends_on:
       - node
       - mongo
-    restart: always
     
 volumes:
   mongodata:

@@ -8,6 +8,10 @@ const app = express();
 /*- Path handling -*/
 const path = require("path");
 
+/*- 3party access -*/
+const cors = require("cors");
+app.use(cors());
+
 /*- Make .env files readable -*/
 require("dotenv").config({ path: path.resolve("config/.env.production") });
 
